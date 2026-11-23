@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Luyện nghe và viết cùng AI</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--text:#1d1d1f;--muted:#6b6b70;--accent:#3b6fe0;--ai:#eaf0ff;--me:#e7f6ec;--note:#fff6dd;--line:#e3e0d8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121214;--card:#1c1c1f;--text:#f2f2f3;--muted:#9a9aa2;--ai:#1d2740;--me:#1c3125;--note:#3a3320;--line:#2c2c30}}
+:root[data-theme="dark"]{--bg:#121214;--card:#1c1c1f;--text:#f2f2f3;--muted:#9a9aa2;--ai:#1d2740;--me:#1c3125;--note:#3a3320;--line:#2c2c30}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+main{max-width:720px;margin:0 auto;padding:18px 14px 30px}
+h1{font-size:22px;margin:0 0 2px}.sub{margin:0 0 14px;color:var(--muted);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input[type=text]{padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:15px}
+input[type=text]{flex:1;min-width:0}
+button{padding:9px 14px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+button:disabled{opacity:.5;cursor:default}
+label{font-size:14px;color:var(--muted)}
+#chat{min-height:260px;max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.b{padding:10px 12px;border-radius:12px;max-width:88%;word-wrap:break-word}
+.ai{background:var(--ai);align-self:flex-start}.me{background:var(--me);align-self:flex-end}
+.note{background:var(--note);align-self:stretch;max-width:100%;font-size:14px}
+.note small{display:block;color:var(--muted);margin-top:4px}
+.tools{display:flex;gap:6px;margin-top:6px}.tools button{padding:5px 10px;font-size:13px}
+body.hide .ai:not(.show) .txt{display:none}
+.hint{color:var(--muted);font-size:14px;text-align:center;margin:auto}
+#st{font-size:13px;color:var(--muted);margin-top:8px;min-height:18px}
+</style>
+</head>
+<body class="hide">
+<main>
+<h1>🎧 Luyện nghe và viết</h1>
+<p class="sub">AI nói bằng giọng đọc, bạn nghe rồi trả lời bằng cách gõ. AI sửa lỗi cho bạn bằng tiếng Việt.</p>
+
+<div class="card">
+  <div class="row">
+    <label>Tình huống
+      <select id="topic">
+        <option>Gọi món ở nhà hàng</option><option>Hỏi đường</option><option>Phỏng vấn xin việc</option>
+        <option>Làm quen bạn mới</option><option>Đặt phòng khách sạn</option><option>Mua sắm</option>
+      </select>
+    </label>
+    <label>Trình độ
+      <select id="level"><option>Mới bắt đầu (A1-A2)</option><option selected>Trung cấp (B1)</option><option>Khá (B2)</option></select>
+    </label>
+    <button id="start">▶ Bắt đầu</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <label><input type="checkbox" id="hide" checked> Ẩn chữ (luyện nghe)</label>
+    <label><input type="checkbox" id="slow"> Đọc chậm</label>
+  </div>
+  <div id="st"></div>
+</div>
+
+<div class="card">
+  <div id="chat"><div class="hint">Chọn tình huống rồi bấm “Bắt đầu”.<br>AI sẽ nói trước, bạn lắng nghe và gõ câu trả lời.</div></div>
+  <div class="row" style="margin-top:10px">
+    <input type="text" id="msg" placeholder="Gõ câu trả lời bằng tiếng Anh…" disabled>
+    <button id="send" disabled>Gửi</button>
+  </div>
+</div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let hist=[],busy=false,active=false;
+const sample={json:async(p)=>{
+  const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p})});
+  if(!r.ok)throw new Error('api');
+  return r.json();
+}};
+
+function speak(t){
+  if(!('speechSynthesis' in window))return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=$('slow').checked?0.6:0.9;
+  const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith('en'));
+  const v=vs.find(v=>/Google|Natural|Samantha/i.test(v.name))||vs[0];
+  if(v)u.voice=v;speechSynthesis.speak(u);
+}
+function add(cls,text){
+  const d=document.createElement('div');d.className='b '+cls;
+  const s=document.createElement('span');s.className='txt';s.textContent=text;d.appendChild(s);
+  const c=$('chat');if(c.querySelector('.hint'))c.innerHTML='';
+  c.appendChild(d);c.scrollTop=c.scrollHeight;return d;
+}
+function addAI(say,vocab){
+  const d=add('ai',say);
+  const t=document.createElement('div');t.className='tools';
+  const b1=document.createElement('button');b1.className='ghost';b1.textContent='🔊 Nghe lại';b1.onclick=()=>speak(say);
+  const b2=document.createElement('button');b2.className='ghost';b2.textContent='👁 Hiện chữ';
+  b2.onclick=()=>{d.classList.toggle('show');b2.textContent=d.classList.contains('show')?'🙈 Ẩn chữ':'👁 Hiện chữ'};
+  t.append(b1,b2);d.appendChild(t);
+  if(vocab&&vocab.length){
+    const v=document.createElement('small');v.className='txt';v.style.display='block';
+    v.textContent='Từ cần nhớ: '+vocab.map(x=>x.w+' = '+x.vi).join(' · ');d.appendChild(v);
+  }
+  speak(say);
+}
+function addNote(text){
+  const d=document.createElement('div');d.className='b note';d.textContent='✏️ '+text;
+  $('chat').appendChild(d);$('chat').scrollTop=$('chat').scrollHeight;
+}
+function setBusy(b){busy=b;$('send').disabled=b||!active;$('msg').disabled=b||!active;$('start').disabled=b;$('st').textContent=b?'AI đang suy nghĩ…':''}
+
+async function turn(userText){
+  if(!sample){$('st').textContent='Tính năng AI chưa sẵn sàng.';return}
+  setBusy(true);
+  const h=hist.map(x=>(x.r==='ai'?'Nhân vật: ':'Học viên: ')+x.t).join('\n')||'(chưa có)';
+  const prompt=`Bạn là gia sư tiếng Anh thân thiện, đóng vai nhân vật trong tình huống để học viên người Việt luyện NGHE và VIẾT.
+Tình huống: ${$('topic').value}. Trình độ: ${$('level').value}.
+Nhân vật nói tiếng Anh ngắn (1-3 câu), từ vựng và độ khó hợp trình độ. Học viên chỉ NGHE (không thấy chữ) rồi gõ trả lời.
+Chỉ trả về JSON đúng dạng, không thêm gì khác: {"say":"...","feedback":"...","vocab":[{"w":"...","vi":"..."}]}
+- say: lời tiếng Anh nhân vật nói tiếp theo, kết thúc bằng một câu hỏi hoặc yêu cầu để học viên trả lời.
+- feedback: tiếng Việt, 1-3 câu: học viên nghe hiểu đúng ý chưa, sửa lỗi ngữ pháp hoặc chính tả, gợi ý cách viết tự nhiên hơn. Lượt mở đầu thì để "".
+- vocab: tối đa 2 từ hoặc cụm đáng học trong "say" (w tiếng Anh, vi nghĩa tiếng Việt).
+Hội thoại trước đó:
+${h}
+${userText?'Học viên vừa gõ: '+userText:'Hãy mở đầu hội thoại.'}`;
+  try{
+    const r=await sample.json(prompt,{cache:false});
+    if(r.feedback)addNote(r.feedback);
+    hist.push({r:'ai',t:r.say});
+    addAI(r.say,r.vocab);
+  }catch(e){
+    $('st').textContent=e&&e.code==='not_granted'?'Bạn cần cho phép dùng AI để tiếp tục.':'Có lỗi, thử lại nhé.';
+    setBusy(false);return;
+  }
+  setBusy(false);$('msg').focus();
+}
+$('start').onclick=()=>{hist=[];active=true;$('chat').innerHTML='';turn(null)};
+function send(){
+  const v=$('msg').value.trim();if(!v||busy)return;
+  $('msg').value='';add('me',v);hist.push({r:'me',t:v});turn(v);
+}
+$('send').onclick=send;
+$('msg').onkeydown=e=>{if(e.key==='Enter')send()};
+$('hide').onchange=e=>document.body.classList.toggle('hide',e.target.checked);
+if('speechSynthesis' in window)speechSynthesis.getVoices();
+</script>
+</body>
+</html>
