@@ -89,6 +89,8 @@ body.hide .m.ai:not(.show) .txt{display:none}
 .btn{width:100%;margin-top:10px;padding:10px;border-radius:12px;background:#16a34a;color:#fff;font-weight:700;font-size:14px}
 .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);margin-top:6px}
 .fine{font-size:12px;color:var(--muted);text-align:center;margin-top:6px}
+.endbox{align-self:stretch;text-align:center;background:rgba(34,197,94,.12);border:1px solid #22c55e;border-radius:14px;padding:14px 16px;font-size:15px;font-weight:600;color:#bbf7d0}
+.endbox small{display:block;margin-top:4px;font-weight:400;color:var(--muted)}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);background:#1b1f3b;color:#fff;padding:11px 18px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:.3s;z-index:9;max-width:90vw;text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 </style>
@@ -311,20 +313,31 @@ function addAI(say,vocab){
 }
 function setBusy(b){busy=b;$('send').disabled=b||!active;$('msg').disabled=b||!active;$('start').disabled=b;if(!b)$('st').textContent=''}
 
+const MAXT=8; // tối đa số lượt học viên trả lời
+function endConv(){
+  active=false;
+  const b=mk('div','endbox');b.innerHTML='🎉 Hội thoại đã kết thúc!<small>Bấm “Hội thoại mới” để luyện tiếp, hoặc “Xuất Excel” để lưu từ mới.</small>';
+  $('chat').appendChild(b);down();
+  $('msg').placeholder='Hội thoại đã kết thúc';
+  toast('🎉 Hội thoại đã kết thúc!');
+}
 async function turn(userText){
   setBusy(true);$('st').textContent='';
   const ctx=hist.map(x=>(x.r==='ai'?'Nhân vật: ':'Học viên: ')+x.t).join('\n')||'(chưa có)';
+  const turns=hist.filter(x=>x.r==='me').length;
   const lastAI=[...hist].reverse().find(x=>x.r==='ai');
   const promptA=`Bạn đóng vai nhân vật trong tình huống để học viên người Việt luyện NGHE và VIẾT tiếng Anh.
 Chủ đề: ${cur.topic}. Bối cảnh cụ thể: ${cur.setting}. Trình độ: ${level}.
 Tính cách nhân vật: ${cur.persona}.
 Diễn biến bất ngờ: ${cur.twist} (đưa vào hội thoại một cách tự nhiên ở khoảng lượt 2-4, không nói ngay ở lượt mở đầu).
 Mã ngẫu nhiên: ${cur.seed} (dùng để tạo câu mở đầu và chi tiết khác với những lần trước, tự đặt tên cho nhân vật nếu cần).
+Số lượt học viên đã trả lời: ${turns}.
 Hội thoại trước đó:
 ${ctx}
 ${userText?'Học viên vừa gõ: '+userText:'Hãy mở đầu hội thoại.'}
 Chỉ trả về JSON đúng dạng: {"say":"...","vocab":[{"w":"...","vi":"..."}]}
-- say: lời tiếng Anh nhân vật nói tiếp (1-3 câu ngắn, hợp trình độ, phản hồi tự nhiên theo điều học viên vừa gõ), kết thúc bằng một câu hỏi hoặc yêu cầu để học viên trả lời.
+- say: lời tiếng Anh nhân vật nói tiếp (1-3 câu ngắn, hợp trình độ, phản hồi tự nhiên theo điều học viên vừa gõ), nếu end=false thì kết thúc bằng một câu hỏi hoặc yêu cầu để học viên trả lời.
+- end: true khi hội thoại đã đến hồi kết tự nhiên (giao dịch/việc đã xong, hai bên chào tạm biệt) hoặc học viên đã trả lời từ ${MAXT} lượt trở lên; khi end=true thì say là lời chào kết thúc, KHÔNG hỏi thêm. Ngược lại end=false.
 - vocab: tối đa 2 từ hoặc cụm đáng học trong "say" (w tiếng Anh, vi nghĩa tiếng Việt).`;
   let ph=null,pB=Promise.resolve(null);
   if(userText){
@@ -341,11 +354,12 @@ Chỉ trả về JSON đúng dạng: {"feedback":"..."}
   try{
     const r=await sample.json(promptA,{cache:false});
     ty.remove();hist.push({r:'ai',t:r.say});addAI(r.say,r.vocab);
+    if(r.end===true||turns>=MAXT)endConv();
   }catch(e){
     ty.remove();if(ph)ph.remove();
     setBusy(false);$('st').textContent='Có lỗi: '+((e&&e.message)||'');return;
   }
-  setBusy(false);$('msg').focus();
+  setBusy(false);if(active)$('msg').focus();
   pB.then(f=>{
     if(!ph)return;
     if(f&&f.feedback)ph.textContent='✏️ '+f.feedback;else ph.remove();
@@ -354,7 +368,7 @@ Chỉ trả về JSON đúng dạng: {"feedback":"..."}
 }
 $('start').onclick=()=>{
   if('speechSynthesis' in window)speechSynthesis.cancel();
-  newSession();hist=[];active=true;$('chat').innerHTML='';
+  newSession();hist=[];active=true;$('chat').innerHTML='';$('msg').placeholder='Gõ câu trả lời bằng tiếng Anh…';
   $('start').textContent='🔄 Hội thoại mới';turn(null);
 };
 function send(){
