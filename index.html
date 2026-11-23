@@ -91,6 +91,18 @@ body.hide .m.ai:not(.show) .txt{display:none}
 .fine{font-size:12px;color:var(--muted);text-align:center;margin-top:6px}
 .endbox{align-self:stretch;text-align:center;background:rgba(34,197,94,.12);border:1px solid #22c55e;border-radius:14px;padding:14px 16px;font-size:15px;font-weight:600;color:#bbf7d0}
 .endbox small{display:block;margin-top:4px;font-weight:400;color:var(--muted)}
+
+/* Tra từ nhanh */
+#lk{position:fixed;z-index:20;width:min(300px,calc(100vw - 20px));background:var(--card);color:var(--text);border:1px solid var(--p);border-radius:14px;padding:12px 14px;box-shadow:0 10px 32px rgba(0,0,0,.35);font-size:14px;display:none}
+#lk.show{display:block}
+#lk .lw{display:flex;align-items:center;gap:8px}
+#lk .lw b{flex:1;font-size:16px;word-break:break-word}
+#lk .ipa,.wc .ipa{color:var(--p);font-size:13px;margin-top:2px}
+#lk .lm{margin-top:6px;font-size:15px}
+#lk .ls{margin-top:8px;font-size:12px;color:var(--muted)}
+#lk .la{display:flex;gap:6px;margin-top:8px}
+#lk button{background:transparent;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:12px}
+.txt ::selection,.txt::selection{background:rgba(91,91,240,.45)}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);background:#1b1f3b;color:#fff;padding:11px 18px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:.3s;z-index:9;max-width:90vw;text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 </style>
@@ -124,7 +136,7 @@ body.hide .m.ai:not(.show) .txt{display:none}
 <div class="grid">
   <section class="card">
     <div class="ch"><span class="dot"></span><div><b id="ttl">Chưa bắt đầu</b><small id="sub">Chọn tình huống rồi bấm “Bắt đầu hội thoại”</small></div></div>
-    <div id="chat"><div class="hint"><span class="big">🎧</span>AI sẽ nói trước.<br>Bạn lắng nghe rồi gõ câu trả lời bằng tiếng Anh.</div></div>
+    <div id="chat"><div class="hint"><span class="big">🎧</span>AI sẽ nói trước.<br>Bạn lắng nghe rồi gõ câu trả lời bằng tiếng Anh.<br><small>💡 Bôi đen một từ/cụm trong lời AI (bấm “Hiện chữ”) để xem nghĩa, phát âm và tự thêm vào Từ mới.</small></div></div>
     <div id="st"></div>
     <div class="bar">
       <input type="text" id="msg" placeholder="Gõ câu trả lời bằng tiếng Anh…" disabled>
@@ -151,6 +163,7 @@ body.hide .m.ai:not(.show) .txt{display:none}
   </aside>
 </div>
 </main>
+<div id="lk" role="dialog" aria-live="polite"></div>
 <div id="toast"></div>
 
 <script>
@@ -211,7 +224,7 @@ function addFresh(list,say){
   });
   render();
 }
-function saveWord(it){if(isSaved(it.w))return;saved.unshift({w:it.w,vi:it.vi,ctx:it.ctx,topic:it.topic});persist();render()}
+function saveWord(it){if(isSaved(it.w))return;saved.unshift({w:it.w,vi:it.vi,ipa:it.ipa||'',ctx:it.ctx,topic:it.topic});persist();render()}
 function card(item,mode){
   const c=mk('div','wc'+(item.lock?' locked':'')+(item.isNew?' new':''));
   const top=mk('div','wt'),w=mk('strong','w');w.textContent=item.w;
@@ -226,7 +239,8 @@ function card(item,mode){
     const x=mk('button','mini');x.textContent='🗑';x.onclick=e=>{e.stopPropagation();saved=saved.filter(f=>f!==item);persist();render()};
     top.append(x);
   }
-  const m=mk('div','m2');m.textContent=item.vi;c.append(top,m);
+  const m=mk('div','m2');m.textContent=item.vi;
+  if(item.ipa){const ip=mk('div','ipa');ip.textContent=item.ipa;c.append(top,ip,m)}else c.append(top,m);
   c.onclick=()=>{if(item.lock){item.lock=false;c.classList.remove('locked')}else c.classList.toggle('reveal')};
   item.isNew=false;return c;
 }
@@ -377,6 +391,75 @@ function send(){
 }
 $('send').onclick=send;$('msg').onkeydown=e=>{if(e.key==='Enter')send()};
 $('hide').onchange=e=>document.body.classList.toggle('hide',e.target.checked);
+
+/* ---------- Quét chữ để tra nghĩa + phát âm + thêm vào Từ mới ---------- */
+const lk=$('lk'),lkCache=new Map();let lkLast='',lkTimer,lkSeq=0;
+function lkHide(){lk.classList.remove('show');lkLast=''}
+function lkPlace(rect){
+  lk.classList.add('show');
+  const w=lk.offsetWidth,h=lk.offsetHeight;
+  let x=Math.min(Math.max(8,rect.left+rect.width/2-w/2),innerWidth-w-8);
+  let y=rect.top-h-10;if(y<8)y=Math.min(rect.bottom+10,innerHeight-h-8);
+  lk.style.left=x+'px';lk.style.top=y+'px';
+}
+function lkRender(phrase,d,sentence,rect,loading,err){
+  lk.innerHTML='';
+  const top=mk('div','lw'),b=mk('b');b.textContent=(d&&d.w)||phrase;
+  const sp=mk('button');sp.textContent='🔊';sp.onclick=()=>speak(phrase);
+  const sl=mk('button');sl.textContent='🐢';sl.onclick=()=>speak(phrase,null,true);
+  const cl=mk('button');cl.textContent='✕';cl.onclick=lkHide;
+  top.append(b,sp,sl,cl);lk.appendChild(top);
+  if(loading){const dt=mk('div','dots');dt.append(mk('i'),mk('i'),mk('i'));lk.appendChild(dt)}
+  else if(err){const e=mk('div','lm');e.textContent='Không tra được, thử lại nhé.';lk.appendChild(e);
+    const r=mk('button');r.textContent='↻ Thử lại';r.onclick=()=>lookup(phrase,sentence,rect);const a=mk('div','la');a.appendChild(r);lk.appendChild(a)}
+  else{
+    if(d.ipa){const i=mk('div','ipa');i.textContent=d.ipa;lk.appendChild(i)}
+    const m=mk('div','lm');m.textContent=d.vi;lk.appendChild(m);
+    const st=mk('div','ls');
+    const key=d.w;
+    st.textContent=fresh.some(f=>same(f.w,key))?'✅ Đã có trong “Từ mới”':'➕ Đã thêm vào “Từ mới”';
+    lk.appendChild(st);
+  }
+  lkPlace(rect);
+}
+async function lookup(phrase,sentence,rect){
+  const id=++lkSeq,key=phrase.toLowerCase();
+  speak(phrase);
+  let d=lkCache.get(key);
+  if(!d){
+    lkRender(phrase,null,sentence,rect,true);
+    const prompt=`Bạn là từ điển Anh-Việt. Học viên người Việt chọn cụm "${phrase}" trong câu: "${sentence}".
+Chỉ trả về JSON đúng dạng: {"w":"...","ipa":"...","vi":"..."}
+- w: cụm tiếng Anh đã chuẩn hóa (bỏ dấu câu thừa ở đầu/cuối, giữ nguyên nếu là cụm cố định hoặc thành ngữ, viết thường trừ tên riêng).
+- ipa: phiên âm IPA kiểu Mỹ của cả cụm, đặt giữa hai dấu gạch chéo.
+- vi: nghĩa tiếng Việt NGẮN GỌN của cụm đúng theo ngữ cảnh câu này (nếu là thành ngữ hoặc cụm động từ thì dịch ý nghĩa, không dịch từng chữ).`;
+    try{d=await sample.json(prompt);if(!d||!d.vi)throw 0;d.w=(d.w||phrase).trim();lkCache.set(key,d)}
+    catch(_){if(id===lkSeq)lkRender(phrase,null,sentence,rect,false,true);return}
+  }
+  if(id!==lkSeq)return;
+  if(d.w.split(/\s+/).length<=8&&!fresh.some(f=>same(f.w,d.w))){
+    fresh.unshift({w:d.w,vi:d.vi,ipa:d.ipa||'',ctx:sentence,topic:cur?cur.topic:'',lock:false,isNew:true});
+    lkRender(phrase,d,sentence,rect);render();
+  }else lkRender(phrase,d,sentence,rect);
+}
+function onSel(){
+  const sel=getSelection();
+  if(!sel||sel.isCollapsed||!sel.rangeCount){return}
+  const phrase=sel.toString().replace(/\s+/g,' ').trim();
+  if(phrase.length<2||phrase.length>100||!/[A-Za-z]/.test(phrase)||phrase===lkLast)return;
+  const rg=sel.getRangeAt(0),a=rg.commonAncestorContainer;
+  const el=a.nodeType===1?a:a.parentElement;
+  const txt=el&&el.closest('.txt');
+  if(!txt||!$('chat').contains(txt))return;
+  lkLast=phrase;
+  lookup(phrase,txt.textContent.trim(),rg.getBoundingClientRect());
+}
+document.addEventListener('selectionchange',()=>{clearTimeout(lkTimer);lkTimer=setTimeout(onSel,450)});
+document.addEventListener('mousedown',e=>{if(!lk.contains(e.target)&&lk.classList.contains('show'))lkHide()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')lkHide()});
+$('chat').addEventListener('scroll',lkHide);
+lk.addEventListener('mousedown',e=>e.preventDefault());
+
 if('speechSynthesis' in window)speechSynthesis.getVoices();
 render();
 </script>
