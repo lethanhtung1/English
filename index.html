@@ -226,27 +226,43 @@ function setBusy(b){busy=b;$('send').disabled=b||!active;$('msg').disabled=b||!a
 
 async function turn(userText){
   setBusy(true);
-  const h=hist.map(x=>(x.r==='ai'?'Nhân vật: ':'Học viên: ')+x.t).join('\n')||'(chưa có)';
-  const prompt=`Bạn là gia sư tiếng Anh thân thiện, đóng vai nhân vật trong tình huống để học viên người Việt luyện NGHE và VIẾT.
-Tình huống: ${$('topic').value}. Trình độ: ${$('level').value}.
-Nhân vật nói tiếng Anh ngắn (1-3 câu), từ vựng và độ khó hợp trình độ. Học viên chỉ NGHE (không thấy chữ) rồi gõ trả lời.
-Chỉ trả về JSON đúng dạng, không thêm gì khác: {"say":"...","feedback":"...","vocab":[{"w":"...","vi":"..."}]}
-- say: lời tiếng Anh nhân vật nói tiếp theo, kết thúc bằng một câu hỏi hoặc yêu cầu để học viên trả lời.
-- feedback: tiếng Việt, 1-3 câu: học viên nghe hiểu đúng ý chưa, sửa lỗi ngữ pháp hoặc chính tả, gợi ý cách viết tự nhiên hơn. Lượt mở đầu thì để "".
-- vocab: tối đa 2 từ hoặc cụm đáng học trong "say" (w tiếng Anh, vi nghĩa tiếng Việt).
+  const ctx=hist.map(x=>(x.r==='ai'?'Nhân vật: ':'Học viên: ')+x.t).join('\n')||'(chưa có)';
+  const lastAI=[...hist].reverse().find(x=>x.r==='ai');
+  const sit=`Tình huống: ${$('topic').value}. Trình độ: ${$('level').value}.`;
+  const promptA=`Bạn đóng vai nhân vật trong tình huống để học viên người Việt luyện NGHE và VIẾT tiếng Anh.
+${sit}
 Hội thoại trước đó:
-${h}
-${userText?'Học viên vừa gõ: '+userText:'Hãy mở đầu hội thoại.'}`;
+${ctx}
+${userText?'Học viên vừa gõ: '+userText:'Hãy mở đầu hội thoại.'}
+Chỉ trả về JSON đúng dạng: {"say":"...","vocab":[{"w":"...","vi":"..."}]}
+- say: lời tiếng Anh nhân vật nói tiếp (1-3 câu ngắn, hợp trình độ, phản hồi tự nhiên theo điều học viên vừa gõ), kết thúc bằng một câu hỏi hoặc yêu cầu để học viên trả lời.
+- vocab: tối đa 2 từ hoặc cụm đáng học trong "say" (w tiếng Anh, vi nghĩa tiếng Việt).`;
+  let ph=null,pB=Promise.resolve(null);
+  if(userText){
+    ph=document.createElement('div');ph.className='b note';ph.textContent='✏️ Đang chấm câu của bạn…';
+    $('chat').appendChild(ph);$('chat').scrollTop=$('chat').scrollHeight;
+    const promptB=`Bạn là gia sư tiếng Anh cho học viên người Việt. ${sit}
+Nhân vật vừa nói: "${lastAI?lastAI.t:''}"
+Học viên gõ: "${userText}"
+Chỉ trả về JSON đúng dạng: {"feedback":"..."}
+- feedback: tiếng Việt, 1-3 câu: học viên nghe hiểu đúng ý chưa, sửa lỗi ngữ pháp hoặc chính tả, gợi ý cách viết tự nhiên hơn.`;
+    pB=sample.json(promptB).catch(()=>null);
+  }
   try{
-    const r=await sample.json(prompt,{cache:false});
-    if(r.feedback)addNote(r.feedback);
+    const r=await sample.json(promptA,{cache:false});
     hist.push({r:'ai',t:r.say});
     addAI(r.say,r.vocab);
   }catch(e){
+    if(ph)ph.remove();
     $('st').textContent='Có lỗi: '+((e&&e.message)||'');
     setBusy(false);return;
   }
   setBusy(false);$('msg').focus();
+  pB.then(f=>{
+    if(!ph)return;
+    if(f&&f.feedback)ph.textContent='✏️ '+f.feedback;else ph.remove();
+    $('chat').scrollTop=$('chat').scrollHeight;
+  });
 }
 $('start').onclick=()=>{hist=[];active=true;$('chat').innerHTML='';turn(null)};
 function send(){
