@@ -184,10 +184,23 @@ const TOPICS=[
  {k:'job',e:'💼',n:'Phỏng vấn xin việc',s:['công ty công nghệ khởi nghiệp','khách sạn 5 sao (vị trí lễ tân)','công ty marketing quốc tế','cửa hàng bán lẻ','phỏng vấn trực tuyến qua video']},
  {k:'meet',e:'🤝',n:'Làm quen bạn mới',s:['buổi định hướng sinh viên mới','bữa tiệc sinh nhật của bạn chung','lớp học tiếng Anh','câu lạc bộ chạy bộ','chuyến bay dài ngồi cạnh nhau']},
  {k:'hotel',e:'🏨',n:'Đặt phòng khách sạn',s:['khách sạn ven biển mùa cao điểm','khách sạn nhỏ trong thành phố','đặt phòng qua điện thoại','check-in muộn lúc nửa đêm','khu nghỉ dưỡng có hồ bơi']},
- {k:'shop',e:'🛍️',n:'Mua sắm',s:['cửa hàng quần áo đang giảm giá','siêu thị mua đồ nấu ăn','cửa hàng điện thoại','chợ đồ lưu niệm cho khách du lịch','cửa hàng giày thể thao']}
+ {k:'shop',e:'🛍️',n:'Mua sắm',s:['cửa hàng quần áo đang giảm giá','siêu thị mua đồ nấu ăn','cửa hàng điện thoại','chợ đồ lưu niệm cho khách du lịch','cửa hàng giày thể thao']},
+ {k:'doctor',e:'🩺',n:'Đi khám bệnh',s:['phòng khám gia đình buổi sáng','khám khi bị cảm cúm và sốt','nhà thuốc mua thuốc theo toa','khám răng định kỳ','đặt lịch khám qua điện thoại']},
+ {k:'airport',e:'✈️',n:'Ở sân bay',s:['quầy làm thủ tục check-in','cổng an ninh kiểm tra hành lý','chuyến bay bị hoãn ở cổng chờ','nhận hành lý bị thất lạc','hải quan nhập cảnh']},
+ {k:'taxi',e:'🚕',n:'Taxi và phương tiện công cộng',s:['gọi taxi từ sân bay về khách sạn','mua vé tàu điện ngầm ở máy bán vé','hỏi tài xế xe buýt về trạm dừng','đi xe công nghệ vào giờ cao điểm','thuê xe đạp ở thành phố du lịch']},
+ {k:'bank',e:'🏦',n:'Ngân hàng và đổi tiền',s:['mở tài khoản ngân hàng mới','đổi tiền ở quầy ngoại tệ','báo mất thẻ tín dụng','chuyển tiền quốc tế','hỏi về khoản vay nhỏ']},
+ {k:'phone',e:'📞',n:'Gọi điện và chăm sóc khách hàng',s:['khiếu nại đơn hàng giao trễ','hủy gói internet tại nhà','đặt bàn nhà hàng qua điện thoại','hỏi về hóa đơn điện thoại bất thường','đổi hàng bị lỗi với tổng đài']},
+ {k:'rent',e:'🏠',n:'Thuê nhà',s:['xem căn hộ với chủ nhà','thuê phòng chung với bạn cùng nhà','thương lượng giá thuê','báo hỏng vòi nước cho chủ nhà','trả nhà và nhận lại tiền cọc']},
+ {k:'gym',e:'🏋️',n:'Phòng gym và thể thao',s:['đăng ký thẻ hội viên phòng gym','hỏi huấn luyện viên về giáo án tập','lớp yoga buổi sáng','thuê sân tennis','câu lạc bộ bơi lội']},
+ {k:'work',e:'🧑‍💻',n:'Họp và trao đổi công việc',s:['họp nhóm buổi sáng thứ Hai','xin nghỉ phép với quản lý','báo cáo tiến độ dự án','nhờ đồng nghiệp giúp đỡ','trao đổi với khách hàng nước ngoài qua video']},
+ {k:'school',e:'🎓',n:'Trường học và lớp học',s:['hỏi giảng viên về bài tập','đăng ký môn học ở phòng đào tạo','thảo luận nhóm làm dự án','mượn sách ở thư viện','xin gia hạn nộp bài']},
+ {k:'party',e:'🎉',n:'Tiệc và sự kiện',s:['tiệc cưới của bạn thân','tiệc tất niên của công ty','buổi hòa nhạc ngoài trời','mừng sinh nhật bất ngờ','hội chợ ẩm thực cuối tuần']},
+ {k:'tour',e:'📸',n:'Du lịch và tham quan',s:['mua vé vào bảo tàng','đặt tour tham quan trong ngày','hỏi hướng dẫn viên về lịch sử','nhờ người lạ chụp ảnh giúp','chợ đêm nổi tiếng với khách du lịch']},
+ {k:'tech',e:'💻',n:'Sửa chữa và hỗ trợ kỹ thuật',s:['mang laptop bị hỏng đi sửa','hỏi nhân viên cửa hàng về điện thoại mới','Wi-Fi nhà bị chậm, gọi kỹ thuật viên','cài phần mềm với đồng nghiệp IT','đổi pin cho đồng hồ thông minh']},
+ {k:'emergency',e:'🚨',n:'Tình huống khẩn cấp',s:['mất ví ở nơi công cộng','báo cảnh sát về chiếc điện thoại bị mất','hỏi đường đến bệnh viện gần nhất','xe hỏng giữa đường','quên chìa khóa và gọi thợ khóa']}
 ];
-const TWISTS=['có một thứ bạn muốn đã hết hàng','có sự nhầm lẫn về thông tin hoặc giá tiền','bạn cần đổi yêu cầu vào phút chót','nhân vật hỏi một câu bạn khó đoán trước','có chương trình khuyến mãi bất ngờ','có chút chậm trễ và nhân vật xin lỗi','nhân vật gợi ý một lựa chọn khác với dự định của bạn'];
-const PERSONAS=['thân thiện và nói chuyện nhanh','lịch sự, trang trọng','hơi vội nhưng tốt bụng','vui tính, hay đùa nhẹ','điềm đạm, nói chậm rõ ràng'];
+const TWISTS=['có một thứ bạn muốn đã hết hàng','có sự nhầm lẫn về thông tin hoặc giá tiền','bạn cần đổi yêu cầu vào phút chót','nhân vật hỏi một câu bạn khó đoán trước','có chương trình khuyến mãi bất ngờ','có chút chậm trễ và nhân vật xin lỗi','nhân vật gợi ý một lựa chọn khác với dự định của bạn','có tiếng ồn xung quanh nên nhân vật phải nhắc lại','nhân vật cần bạn cung cấp thêm giấy tờ hoặc thông tin','hệ thống bị lỗi nên phải làm theo cách khác','bạn phải chờ và nhân vật hỏi chuyện cho đỡ chán','có hiểu lầm do một từ nghe giống từ khác'];
+const PERSONAS=['thân thiện và nói chuyện nhanh','lịch sự, trang trọng','hơi vội nhưng tốt bụng','vui tính, hay đùa nhẹ','điềm đạm, nói chậm rõ ràng','nghiêm túc, đi thẳng vào vấn đề','nhiệt tình, hay hỏi thêm','hơi mệt mỏi nhưng vẫn lịch sự','trẻ trung, dùng nhiều từ lóng nhẹ'];
 
 function buildChips(){
   const box=$('chips');box.innerHTML='';
