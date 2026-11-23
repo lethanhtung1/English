@@ -70,7 +70,7 @@ const $=id=>document.getElementById(id);
 let hist=[],busy=false,active=false;
 const sample={json:async(p)=>{
   const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p})});
-  if(!r.ok)throw new Error('api');
+  if(!r.ok){let t='';try{t=JSON.stringify(await r.json())}catch(_){}throw new Error(r.status+' '+t)}
   return r.json();
 }};
 
@@ -127,7 +127,7 @@ ${userText?'Học viên vừa gõ: '+userText:'Hãy mở đầu hội thoại.'}
     hist.push({r:'ai',t:r.say});
     addAI(r.say,r.vocab);
   }catch(e){
-    $('st').textContent=e&&e.code==='not_granted'?'Bạn cần cho phép dùng AI để tiếp tục.':'Có lỗi, thử lại nhé.';
+    $('st').textContent=e&&e.code==='not_granted'?'Bạn cần cho phép dùng AI để tiếp tục.':'Có lỗi: '+((e&&e.message)||'');
     setBusy(false);return;
   }
   setBusy(false);$('msg').focus();

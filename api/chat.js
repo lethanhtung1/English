@@ -24,7 +24,10 @@ export default async function handler(req, res) {
   });
 
   if (r.status === 429) return res.status(429).json({ error: 'rate limited' });
-  if (!r.ok) return res.status(502).json({ error: 'upstream' });
+  if (!r.ok) {
+    const detail = (await r.text()).slice(0, 300);
+    return res.status(502).json({ error: 'upstream', status: r.status, detail });
+  }
 
   const d = await r.json();
   const text = (d.candidates?.[0]?.content?.parts || [])
@@ -32,6 +35,6 @@ export default async function handler(req, res) {
   try {
     res.status(200).json(JSON.parse(text));
   } catch {
-    res.status(502).json({ error: 'parse' });
+    res.status(502).json({ error: 'parse', raw: text.slice(0, 300) });
   }
 }
