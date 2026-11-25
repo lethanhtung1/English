@@ -124,6 +124,39 @@ body.hide .m.ai:not(.show) .txt{display:none}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,24px);background:var(--text);color:var(--bg);padding:11px 20px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.4s var(--ease);z-index:9;max-width:90vw;text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Trợ lý nổi kiểu Messenger */
+#abtn{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:29;width:58px;height:58px;border-radius:50%;background:var(--p);color:#171614;display:grid;place-items:center;box-shadow:0 14px 28px -10px rgba(0,0,0,.55);transition:transform .35s var(--ease),opacity .25s}
+#abtn:hover{transform:scale(1.08)}#abtn.hide{opacity:0;pointer-events:none;transform:scale(.6)}
+#abtn svg,.asend svg{width:26px;height:26px;fill:currentColor}
+#asst{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;width:372px;max-width:calc(100vw - 24px);height:min(580px,calc(100vh - 40px));display:flex;flex-direction:column;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:18px;box-shadow:0 30px 60px -20px rgba(0,0,0,.55);transform-origin:bottom right;transform:scale(.9) translateY(18px);opacity:0;pointer-events:none;transition:transform .4s var(--ease),opacity .25s;overflow:hidden}
+#asst.open{transform:none;opacity:1;pointer-events:auto}
+.ahd{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.aav{width:38px;height:38px;border-radius:50%;background:var(--p);color:#171614;display:grid;place-items:center;font-weight:700;flex:none}
+.ahd div{flex:1;min-width:0;line-height:1.3}.ahd b{display:block;font-size:15px}.ahd small{color:var(--muted);font-size:12.5px}
+#aclose{background:transparent;color:var(--muted);font-size:26px;line-height:1;padding:2px 8px;border-radius:8px;transition:.2s}#aclose:hover{color:var(--text);background:var(--ai)}
+#abody{flex:1;overflow-y:auto;scroll-behavior:smooth;padding:14px;display:flex;flex-direction:column;gap:8px}
+.am{display:flex;max-width:88%;animation:rise .35s var(--ease)}
+.am.me{align-self:flex-end}.am.ai{align-self:flex-start}
+.ab{padding:9px 14px;border-radius:18px;font-size:15px;white-space:pre-wrap;word-wrap:break-word}
+.am.ai .ab{background:var(--ai);border-bottom-left-radius:5px}
+.am.me .ab{background:var(--p);color:#171614;border-bottom-right-radius:5px}
+.ph{margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 11px;white-space:normal}
+.pt{display:flex;align-items:center;gap:10px}.pt b{flex:1;font-size:15px}
+.pt button{background:transparent;color:var(--muted);padding:0;font-size:12.5px;border-bottom:1px solid var(--line);transition:.2s}.pt button:hover{color:var(--p);border-color:var(--p)}
+.pi{color:var(--p);font-size:13.5px;margin-top:3px}.pn{color:var(--muted);font-size:13px;margin-top:2px}
+.aq{display:flex;gap:6px;overflow-x:auto;padding:4px 12px 8px;scrollbar-width:none}.aq::-webkit-scrollbar{display:none}
+.aq button{flex:none;background:transparent;color:var(--text);border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:13px;transition:.25s var(--ease)}
+.aq button:hover{border-color:var(--p);color:var(--p)}
+#actx{display:none;align-items:center;gap:8px;margin:0 12px 8px;padding:6px 6px 6px 10px;background:var(--ai);border-left:2px solid var(--p);border-radius:8px;font-size:12.5px;color:var(--muted)}
+#actx.show{display:flex}#actx span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#actx button{background:transparent;color:var(--muted);font-size:16px;padding:0 6px}
+.abar{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.abar input{flex:1;min-width:0;padding:10px 16px;border-radius:99px;border:0;background:var(--bg);color:var(--text);font:inherit;outline:none;box-shadow:inset 0 0 0 1px var(--line);transition:box-shadow .25s}
+.abar input:focus{box-shadow:inset 0 0 0 1.5px var(--p)}
+.asend{width:40px;height:40px;border-radius:50%;background:var(--p);color:#171614;display:grid;place-items:center;flex:none;transition:transform .3s var(--ease)}
+.asend svg{width:18px;height:18px}.asend:hover:not(:disabled){transform:scale(1.1)}.asend:disabled{opacity:.45}
+@media(max-width:520px){#asst{left:8px;right:8px;bottom:8px;width:auto;max-width:none;height:calc(100vh - 70px)}}
 </style>
 </head>
 <body class="hide">
@@ -181,6 +214,14 @@ body.hide .m.ai:not(.show) .txt{display:none}
   </aside>
 </div>
 </main>
+<button id="abtn" aria-label="Mở trợ lý"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.1 2 11.2c0 2.9 1.5 5.4 3.8 7.1V22l3.5-1.9c.9.2 1.8.4 2.7.4 5.5 0 10-4.1 10-9.3S17.5 2 12 2zm1 12.500-2.5-2.7L5.6 14.5l5.4-5.700 2.6 2.7 4.8-2.7L13 14.5z"/></svg></button>
+<aside id="asst" role="dialog" aria-label="Trợ lý nghe">
+  <div class="ahd"><span class="aav">T</span><div><b>Trợ lý nghe</b><small>Hỏi chỗ nào nghe không ra</small></div><button id="aclose" aria-label="Đóng">×</button></div>
+  <div id="abody"><div class="am ai"><div class="ab">Chào bạn! Nghe chỗ nào không ra thì cứ gõ cho mình, ví dụ: “I've read a quick guide online, mình nghe không ra chỗ read a”. Mình sẽ giải thích vì sao nghe không ra và đọc mẫu cho bạn.</div></div></div>
+  <div class="aq" id="aq"></div>
+  <div id="actx"><span></span><button id="actxx" aria-label="Bỏ câu đang hỏi">×</button></div>
+  <div class="abar"><input type="text" id="ain" placeholder="Nhắn cho trợ lý…"><button class="asend" id="asend" aria-label="Gửi"><svg viewBox="0 0 24 24"><path d="M2 21 23 12 2 3v7l15 2-15 2z"/></svg></button></div>
+</aside>
 <div id="lk" role="dialog" aria-live="polite"></div>
 <div id="toast"></div>
 
@@ -353,7 +394,8 @@ function addAI(say,vocab){
   const b1=mk('button');b1.textContent='Nghe chậm';b1.onclick=()=>speak(say,b,true);
   const b2=mk('button');b2.textContent='Hiện chữ';
   b2.onclick=()=>{r.classList.toggle('show');b2.textContent=r.classList.contains('show')?'Ẩn chữ':'Hiện chữ'};
-  ac.append(b1,b2);b.append(au,tx,ac);r.append(av,b);$('chat').appendChild(r);down();
+  const b3=mk('button');b3.textContent='Hỏi trợ lý';b3.onclick=()=>askAbout(say);
+  ac.append(b1,b2,b3);b.append(au,tx,ac);r.append(av,b);$('chat').appendChild(r);down();
   addFresh(vocab,say);speak(say,b);
 }
 function setBusy(b){busy=b;$('send').disabled=b||!active;$('msg').disabled=b||!active;$('start').disabled=b;if(!b)$('st').textContent=''}
@@ -490,6 +532,60 @@ document.addEventListener('mousedown',e=>{if(!lk.contains(e.target)&&lk.classLis
 document.addEventListener('keydown',e=>{if(e.key==='Escape')lkHide()});
 $('chat').addEventListener('scroll',lkHide);
 lk.addEventListener('mousedown',e=>e.preventDefault());
+
+/* ---------- Trợ lý nổi: hỏi chỗ nghe không ra ---------- */
+const ah=[];let aBusy=false,aCtx='';
+const aBody=$('abody'),aDown=()=>{aBody.scrollTop=aBody.scrollHeight};
+function aOpen(o){$('asst').classList.toggle('open',o);$('abtn').classList.toggle('hide',o);if(o)setTimeout(()=>$('ain').focus(),120)}
+$('abtn').onclick=()=>aOpen(true);$('aclose').onclick=()=>aOpen(false);
+function rich(el,t){String(t).split(/(\*\*[^*]+\*\*)/g).forEach(p=>{if(!p)return;if(p.startsWith('**')&&p.endsWith('**')&&p.length>4){const s=mk('strong');s.textContent=p.slice(2,-2);el.appendChild(s)}else el.appendChild(document.createTextNode(p))})}
+function aMsg(role,text){const r=mk('div','am '+role),b=mk('div','ab');rich(b,text);r.appendChild(b);aBody.appendChild(r);aDown();return b}
+function aPhrases(b,list){
+  (list||[]).slice(0,4).forEach(x=>{
+    if(!x||!x.t)return;
+    const c=mk('div','ph'),h=mk('div','pt'),w=mk('b');w.textContent=x.t;
+    const s1=mk('button');s1.textContent='Nghe';s1.onclick=()=>speak(x.t);
+    const s2=mk('button');s2.textContent='Chậm';s2.onclick=()=>speak(x.t,null,true);
+    h.append(w,s1,s2);c.appendChild(h);
+    if(x.ipa){const i=mk('div','pi');i.textContent=x.ipa;c.appendChild(i)}
+    if(x.tip){const t=mk('div','pn');t.textContent=x.tip;c.appendChild(t)}
+    b.appendChild(c);
+  });
+}
+function showCtx(){const c=$('actx');c.classList.toggle('show',!!aCtx);c.firstChild.textContent=aCtx?'Đang hỏi về: “'+aCtx+'”':''}
+$('actxx').onclick=()=>{aCtx='';showCtx()};
+['Giải thích cả câu vừa nghe','Chỉ chỗ nối âm','Đọc chậm từng cụm','Cách phát âm chuẩn'].forEach(q=>{const b=mk('button');b.textContent=q;b.onclick=()=>aAsk(q);$('aq').appendChild(b)});
+function askAbout(say){aCtx=say;showCtx();aOpen(true)}
+async function aAsk(q){
+  q=(q||'').trim();if(!q||aBusy)return;
+  aBusy=true;$('asend').disabled=true;$('ain').value='';
+  aMsg('me',q);
+  const ty=mk('div','am ai'),tb=mk('div','ab'),dt=mk('div','dots');dt.append(mk('i'),mk('i'),mk('i'));tb.appendChild(dt);ty.appendChild(tb);aBody.appendChild(ty);aDown();
+  const lastAI=[...hist].reverse().find(x=>x.r==='ai');
+  const sentence=aCtx||(lastAI?lastAI.t:'');
+  const prev=ah.slice(-8).map(x=>(x.r==='me'?'Học viên: ':'Trợ lý: ')+x.t).join('\n')||'(chưa có)';
+  const prompt=`Bạn là trợ lý luyện nghe tiếng Anh cho học viên người Việt (trình độ: ${level}). Hãy nhắn như bạn bè trên Messenger: thân thiện, rõ ràng, không dài dòng.
+Câu tiếng Anh học viên đang nghe: "${sentence||'(chưa có)'}"
+Trò chuyện trước đó với trợ lý:
+${prev}
+Học viên hỏi: ${q}
+Chỉ trả về JSON đúng dạng: {"reply":"...","phrases":[{"t":"...","ipa":"...","tip":"..."}]}
+- reply: tiếng Việt, tối đa khoảng 120 từ. Giải thích cặn kẽ vì sao nghe không ra (nối âm, nuốt âm, âm yếu, rút gọn như I've, nhấn trọng âm...), nói rõ cách thực tế người bản xứ đọc và đánh vần gần đúng bằng tiếng Việt. Có thể dùng **chữ đậm** cho cụm quan trọng, không dùng định dạng markdown nào khác. Lưu ý đúng ngữ pháp: "read" ở hiện tại đọc /riːd/, quá khứ và phân từ đọc /rɛd/.
+- phrases: tối đa 4 mục để học viên bấm nghe mẫu. t là cụm hoặc câu tiếng Anh đủ ngữ cảnh để máy đọc đúng (ví dụ cả "I've read a quick guide online" thay vì chỉ "read a"); ipa là phiên âm IPA của cách đọc nối thực tế, đặt giữa hai dấu gạch chéo; tip là ghi chú ngắn tiếng Việt. Nếu câu hỏi không cần thì để mảng rỗng.
+- Nếu học viên hỏi ngoài chuyện học tiếng Anh thì nhẹ nhàng kéo về chủ đề luyện nghe.`;
+  ah.push({r:'me',t:q});
+  try{
+    const r=await sample.json(prompt);
+    ty.remove();
+    if(!r||!r.reply)throw 0;
+    const b=aMsg('ai',r.reply);aPhrases(b,r.phrases);ah.push({r:'ai',t:r.reply});
+  }catch(_){
+    ty.remove();aMsg('ai','Mình chưa trả lời được, bạn gửi lại giúp mình nhé.');
+  }
+  aBusy=false;$('asend').disabled=false;aDown();$('ain').focus();
+}
+$('asend').onclick=()=>aAsk($('ain').value);
+$('ain').onkeydown=e=>{if(e.key==='Enter')aAsk($('ain').value)};
 
 if('speechSynthesis' in window)speechSynthesis.getVoices();
 render();
