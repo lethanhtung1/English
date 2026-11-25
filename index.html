@@ -376,15 +376,28 @@ $('xs').onclick=()=>{if(saved.length){exportList(saved,'so-tu-vung');toast('Đã
 $('clr').onclick=()=>{if(confirm('Xóa toàn bộ sổ từ vựng?')){saved=[];persist();render()}};
 
 /* ---------- Chat ---------- */
-function speak(t,el,forceSlow){
+let ttsOK=false,hintT;
+function unlockTTS(){
+  // Điện thoại chỉ cho phát âm sau một lần chạm của người dùng: "mở khóa" bằng câu im lặng
+  if(ttsOK||!('speechSynthesis' in window))return;
+  try{const u=new SpeechSynthesisUtterance('a');u.volume=0;u.lang='en-US';speechSynthesis.speak(u);ttsOK=true}catch(_){}
+}
+function speak(t,el,forceSlow,auto){
   if(!('speechSynthesis' in window))return;
+  const wasBusy=speechSynthesis.speaking||speechSynthesis.pending;
   speechSynthesis.cancel();
   document.querySelectorAll('.speaking').forEach(e=>e.classList.remove('speaking'));
   const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=(forceSlow||$('slow').checked)?0.6:0.9;
-  const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith('en'));
-  const v=vs.find(v=>/Google|Natural|Samantha/i.test(v.name))||vs[0];if(v)u.voice=v;
-  if(el){u.onstart=()=>el.classList.add('speaking');u.onend=u.onerror=()=>el.classList.remove('speaking')}
-  speechSynthesis.speak(u);
+  const vs=speechSynthesis.getVoices().filter(v=>v.lang.replace('_','-').startsWith('en'));
+  const v=vs.find(v=>/Google|Natural|Samantha/i.test(v.name))||vs.find(v=>/en-US/i.test(v.lang.replace('_','-')))||vs[0];if(v)u.voice=v;
+  const hint='Điện thoại đang chặn tự phát âm. Bạn bấm nút ▶ để nghe nhé.';
+  clearTimeout(hintT);
+  if(auto)hintT=setTimeout(()=>toast(hint),2500);
+  u.onstart=()=>{clearTimeout(hintT);if(el)el.classList.add('speaking')};
+  u.onend=()=>{clearTimeout(hintT);if(el)el.classList.remove('speaking')};
+  u.onerror=e=>{clearTimeout(hintT);if(el)el.classList.remove('speaking');if(auto&&e&&e.error==='not-allowed')toast(hint)};
+  const go=()=>{try{speechSynthesis.resume()}catch(_){}speechSynthesis.speak(u)};
+  if(wasBusy)setTimeout(go,80);else go();
 }
 const down=()=>{$('chat').scrollTop=$('chat').scrollHeight};
 function clearHint(){const h=$('chat').querySelector('.hint');if(h)h.remove()}
@@ -406,7 +419,7 @@ function addAI(say,vocab){
   b2.onclick=()=>{r.classList.toggle('show');b2.textContent=r.classList.contains('show')?'Ẩn chữ':'Hiện chữ'};
   const b3=mk('button');b3.textContent='Hỏi trợ lý';b3.onclick=()=>askAbout(say);
   ac.append(b1,b2,b3);b.append(au,tx,ac);r.append(av,b);$('chat').appendChild(r);down();
-  addFresh(vocab,say);speak(say,b);
+  addFresh(vocab,say);speak(say,b,false,true);
 }
 function setBusy(b){busy=b;$('send').disabled=b||!active;$('mic').disabled=b||!active;$('msg').disabled=b||!active;$('start').disabled=b;if(!b)$('st').textContent=''}
 
@@ -418,6 +431,7 @@ function endConv(){
   $('msg').placeholder='Hội thoại đã kết thúc';
   toast('Hội thoại đã kết thúc');
 }
+const cleanSay=t=>{let x=String(t||'');if(cur&&cur.seed)x=x.replace(new RegExp('\\s*[\\(\\[]?\\s*(?:ref|code|mã)?\\s*[:#]?\\s*'+cur.seed+'\\s*[\\)\\]]?','ig'),'');return x.replace(/\s*[\(\[]\s*ref\s*[:#][^)\]]*[\)\]]/ig,'').replace(/\s{2,}/g,' ').trim()};
 async function turn(userText,sp){
   setBusy(true);$('st').textContent='';
   const ctx=hist.map(x=>(x.r==='ai'?'Nhân vật: ':'Học viên: ')+x.t).join('\n')||'(chưa có)';
@@ -427,7 +441,7 @@ async function turn(userText,sp){
 Chủ đề: ${cur.topic}. Bối cảnh cụ thể: ${cur.setting}. Trình độ: ${level}.
 Tính cách nhân vật: ${cur.persona}.
 Diễn biến bất ngờ: ${cur.twist} (đưa vào hội thoại một cách tự nhiên ở khoảng lượt 2-4, không nói ngay ở lượt mở đầu).
-Mã ngẫu nhiên: ${cur.seed} (dùng để tạo câu mở đầu và chi tiết khác với những lần trước, tự đặt tên cho nhân vật nếu cần).
+Mã ngẫu nhiên: ${cur.seed} (dùng để tạo câu mở đầu và chi tiết khác với những lần trước, tự đặt tên cho nhân vật nếu cần). Mã này chỉ là gợi ý nội bộ: TUYỆT ĐỐI không viết mã này, chữ "Ref" hay bất kỳ mã nào vào lời nhân vật nói.
 Số lượt học viên đã trả lời: ${turns}.
 Hội thoại trước đó:
 ${ctx}
@@ -450,7 +464,7 @@ Chỉ trả về JSON đúng dạng: {"feedback":"..."}
   tb.appendChild(dt);ty.appendChild(tb);$('chat').appendChild(ty);down();
   try{
     const r=await sample.json(promptA,{cache:false});
-    ty.remove();hist.push({r:'ai',t:r.say});addAI(r.say,r.vocab);
+    ty.remove();r.say=cleanSay(r.say);hist.push({r:'ai',t:r.say});addAI(r.say,r.vocab);
     if(r.end===true||turns>=MAXT)endConv();
   }catch(e){
     ty.remove();if(ph)ph.remove();
@@ -465,10 +479,12 @@ Chỉ trả về JSON đúng dạng: {"feedback":"..."}
 }
 $('start').onclick=()=>{
   if('speechSynthesis' in window)speechSynthesis.cancel();
+  unlockTTS();
   newSession();hist=[];active=true;$('chat').innerHTML='';$('msg').placeholder='Gõ hoặc bấm mic để trả lời bằng tiếng Anh…';
   $('start').textContent='Hội thoại mới';turn(null);
 };
 function send(viaSpeech){
+  unlockTTS();
   const v=$('msg').value.trim();if(!v||busy)return;
   const sp=viaSpeech===true?{conf:recConf}:null;
   $('msg').value='';addMe(v);hist.push({r:'me',t:v});turn(v,sp);
@@ -549,6 +565,7 @@ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const PH='Gõ hoặc bấm mic để trả lời bằng tiếng Anh…';
 let rec=null,recOn=false,recFinal='',recConf=null,recErr='';
 $('mic').onclick=()=>{
+  unlockTTS();
   if(!SR){toast('Trình duyệt này chưa hỗ trợ nhận giọng nói. Bạn dùng Chrome, Edge hoặc Safari nhé.');return}
   if(recOn){rec.stop();return}
   if('speechSynthesis' in window)speechSynthesis.cancel();
