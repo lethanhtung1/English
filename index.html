@@ -165,6 +165,23 @@ body.hide .m.ai:not(.show) .txt{display:none}
 .mic:disabled{opacity:.45}
 .mic.rec{background:var(--p);color:#171614;border-color:var(--p);animation:ring 1.4s infinite}
 @keyframes ring{0%{box-shadow:0 0 0 0 rgba(255,90,54,.55)}100%{box-shadow:0 0 0 14px rgba(255,90,54,0)}}
+
+/* Câu trả lời của trợ lý: định dạng giàu */
+.ab{white-space:normal;line-height:1.6}
+.ab p{margin:0 0 .65em}
+.ah3{font-weight:700;font-size:16px;line-height:1.35;margin:14px 0 6px}.ah3:first-child{margin-top:0}
+.ab ol,.ab ul{margin:6px 0 10px;padding-left:22px}
+.ab li{margin:6px 0;padding-left:2px}
+.ab li ul{margin:6px 0 2px}
+.ab em{font-style:italic}
+.ab code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;background:rgba(127,127,127,.22);padding:1px 6px;border-radius:5px;white-space:nowrap}
+.ab>:last-child{margin-bottom:0}
+.am.ai{max-width:94%}
+#aexp{background:transparent;color:var(--muted);padding:5px 7px;border-radius:8px;display:grid;place-items:center;transition:.2s}
+#aexp:hover{color:var(--text);background:var(--ai)}
+#aexp svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#asst.big{width:min(680px,calc(100vw - 36px));height:calc(100vh - 36px)}
+@media(max-width:520px){#aexp{display:none}}
 </style>
 </head>
 <body class="hide">
@@ -226,7 +243,7 @@ body.hide .m.ai:not(.show) .txt{display:none}
 </main>
 <button id="abtn" aria-label="Mở trợ lý"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.1 2 11.2c0 2.9 1.5 5.4 3.8 7.1V22l3.5-1.9c.9.2 1.8.4 2.7.4 5.5 0 10-4.1 10-9.3S17.5 2 12 2zm1 12.500-2.5-2.7L5.6 14.5l5.4-5.700 2.6 2.7 4.8-2.7L13 14.5z"/></svg></button>
 <aside id="asst" role="dialog" aria-label="Trợ lý nghe">
-  <div class="ahd"><span class="aav">T</span><div><b>Trợ lý nghe</b><small>Hỏi chỗ nào nghe không ra</small></div><button id="aclose" aria-label="Đóng">×</button></div>
+  <div class="ahd"><span class="aav">T</span><div><b>Trợ lý nghe</b><small>Hỏi chỗ nào nghe không ra</small></div><button id="aexp" aria-label="Mở rộng khung chat"><svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button><button id="aclose" aria-label="Đóng">×</button></div>
   <div id="abody"><div class="am ai"><div class="ab">Chào bạn! Nghe chỗ nào không ra thì cứ gõ cho mình, ví dụ: “I've read a quick guide online, mình nghe không ra chỗ read a”. Mình sẽ giải thích vì sao nghe không ra và đọc mẫu cho bạn.</div></div></div>
   <div class="aq" id="aq"></div>
   <div id="actx"><span></span><button id="actxx" aria-label="Bỏ câu đang hỏi">×</button></div>
@@ -598,8 +615,41 @@ $('mic').onclick=()=>{
 const ah=[];let aBusy=false,aCtx='';
 const aBody=$('abody'),aDown=()=>{aBody.scrollTop=aBody.scrollHeight};
 function aOpen(o){$('asst').classList.toggle('open',o);$('abtn').classList.toggle('hide',o);if(o)setTimeout(()=>$('ain').focus(),120)}
+$('aexp').onclick=()=>{$('asst').classList.toggle('big');setTimeout(aDown,250)};
 $('abtn').onclick=()=>aOpen(true);$('aclose').onclick=()=>aOpen(false);
-function rich(el,t){String(t).split(/(\*\*[^*]+\*\*)/g).forEach(p=>{if(!p)return;if(p.startsWith('**')&&p.endsWith('**')&&p.length>4){const s=mk('strong');s.textContent=p.slice(2,-2);el.appendChild(s)}else el.appendChild(document.createTextNode(p))})}
+function inl(el,t){
+  String(t).split(/(\*\*[^*]+\*\*|\*[^*\s][^*\n]*\*|`[^`\n]+`)/g).forEach(p=>{
+    if(!p)return;
+    let n=null;
+    if(/^\*\*[^*]+\*\*$/.test(p)){n=mk('strong');n.textContent=p.slice(2,-2)}
+    else if(/^`[^`\n]+`$/.test(p)){n=mk('code');n.textContent=p.slice(1,-1)}
+    else if(/^\*[^*\s][^*\n]*\*$/.test(p)){n=mk('em');n.textContent=p.slice(1,-1)}
+    if(n)el.appendChild(n);else el.appendChild(document.createTextNode(p));
+  });
+}
+function rich(el,t){
+  let list=null,lt='',cont=false;
+  const end=()=>{list=null;lt='';cont=false};
+  String(t).replace(/\r/g,'').split('\n').forEach(raw=>{
+    const l=raw.replace(/\s+$/,'');let m;
+    if(!l.trim()){end();return}
+    if((m=l.match(/^\s*#{1,4}\s+(.*)$/))){end();const h=mk('div','ah3');inl(h,m[1]);el.appendChild(h);return}
+    if((m=l.match(/^(\s*)(\d+)[.)]\s+(.*)$/))&&m[1].length<2){
+      if(lt!=='ol'){list=mk('ol');lt='ol';el.appendChild(list)}
+      const li=mk('li');li.value=+m[2];inl(li,m[3]);list.appendChild(li);cont=true;return}
+    if((m=l.match(/^(\s*)[-*•]\s+(.*)$/))){
+      const li=mk('li');inl(li,m[2]);
+      if(m[1].length>=2&&list&&lt==='ol'&&list.lastChild){
+        const par=list.lastChild;let sub=Array.from(par.children).find(c=>c.tagName==='UL');
+        if(!sub){sub=mk('ul');par.appendChild(sub)}
+        sub.appendChild(li);return}
+      if(lt!=='ul'){list=mk('ul');lt='ul';el.appendChild(list)}
+      list.appendChild(li);cont=true;return}
+    if(list&&cont&&list.lastChild){
+      const par=list.lastChild;par.appendChild(document.createElement('br'));inl(par,l.trim());return}
+    end();const p=mk('p');inl(p,l);el.appendChild(p);
+  });
+}
 function aMsg(role,text){const r=mk('div','am '+role),b=mk('div','ab');rich(b,text);r.appendChild(b);aBody.appendChild(r);aDown();return b}
 function aPhrases(b,list){
   (list||[]).slice(0,4).forEach(x=>{
@@ -631,7 +681,7 @@ Trò chuyện trước đó với trợ lý:
 ${prev}
 Học viên hỏi: ${q}
 Chỉ trả về JSON đúng dạng: {"reply":"...","phrases":[{"t":"...","ipa":"...","tip":"..."}]}
-- reply: tiếng Việt, tối đa khoảng 120 từ. Giải thích cặn kẽ vì sao nghe không ra (nối âm, nuốt âm, âm yếu, rút gọn như I've, nhấn trọng âm...), nói rõ cách thực tế người bản xứ đọc và đánh vần gần đúng bằng tiếng Việt. Có thể dùng **chữ đậm** cho cụm quan trọng, không dùng định dạng markdown nào khác. Lưu ý đúng ngữ pháp: "read" ở hiện tại đọc /riːd/, quá khứ và phân từ đọc /rɛd/.
+- reply: tiếng Việt, trình bày như một bài giải thích có cấu trúc, dễ đọc, đủ cặn kẽ (khoảng 150-300 từ; nếu câu hỏi đơn giản thì ngắn gọn hơn, không ép đủ các phần). Dùng markdown nhẹ theo mẫu: mở đầu 1-2 câu trả lời thẳng vào câu hỏi; rồi một dòng tiêu đề bắt đầu bằng ### (ví dụ: ### 3 lý do khiến "of our" khó nghe); sau đó danh sách đánh số 1. 2. 3., mỗi ý có **tiêu đề đậm** rồi giải thích ngay dòng dưới; dùng gạch đầu dòng "- " cho các bước nhỏ; *nghiêng* cho từ hoặc cụm tiếng Anh; IPA đặt trong dấu huyền ngược như \`/ɑːr/\`; cuối bài có phần ### Mẹo luyện nghe với 2-3 gạch đầu dòng. Phải nói rõ người bản xứ đọc thật sự thế nào (nối âm, âm yếu schwa, nuốt âm, flap T, rút gọn), đánh vần gần đúng bằng tiếng Việt như **"pát-tờ-vờ"**, và "Kết quả thực tế bạn nghe được". Để một dòng trống giữa các khối. Không dùng bảng hay định dạng nào khác. Lưu ý đúng ngữ pháp: "read" ở hiện tại đọc /riːd/, quá khứ và phân từ đọc /rɛd/.
 - phrases: tối đa 4 mục để học viên bấm nghe mẫu. t là cụm hoặc câu tiếng Anh đủ ngữ cảnh để máy đọc đúng (ví dụ cả "I've read a quick guide online" thay vì chỉ "read a"); ipa là phiên âm IPA của cách đọc nối thực tế, đặt giữa hai dấu gạch chéo; tip là ghi chú ngắn tiếng Việt. Nếu câu hỏi không cần thì để mảng rỗng.
 - Nếu học viên hỏi ngoài chuyện học tiếng Anh thì nhẹ nhàng kéo về chủ đề luyện nghe.`;
   ah.push({r:'me',t:q});
