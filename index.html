@@ -429,7 +429,7 @@ $('xs').onclick=()=>{if(saved.length){exportList(saved,'so-tu-vung');toast('Đã
 $('clr').onclick=()=>{if(confirm('Xóa toàn bộ sổ từ vựng?')){saved=[];persist();render()}};
 
 /* ---------- Chat ---------- */
-let ttsOK=false,hintT;
+let ttsOK=false,hintT,lastTTSEnd=0;
 function unlockTTS(){
   // Điện thoại chỉ cho phát âm sau một lần chạm của người dùng: "mở khóa" bằng câu im lặng
   if(ttsOK||!('speechSynthesis' in window))return;
@@ -447,9 +447,17 @@ function speak(t,el,forceSlow,auto,who){
   clearTimeout(hintT);
   if(auto)hintT=setTimeout(()=>toast(hint),2500);
   u.onstart=()=>{clearTimeout(hintT);if(el)el.classList.add('speaking')};
-  u.onend=()=>{clearTimeout(hintT);if(el)el.classList.remove('speaking')};
-  u.onerror=e=>{clearTimeout(hintT);if(el)el.classList.remove('speaking');if(auto&&e&&e.error==='not-allowed')toast(hint)};
-  const go=()=>{try{speechSynthesis.resume()}catch(_){}speechSynthesis.speak(u)};
+  u.onend=()=>{lastTTSEnd=Date.now();clearTimeout(hintT);if(el)el.classList.remove('speaking')};
+  u.onerror=e=>{lastTTSEnd=Date.now();clearTimeout(hintT);if(el)el.classList.remove('speaking');if(auto&&e&&e.error==='not-allowed')toast(hint)};
+  const go=()=>{
+    try{speechSynthesis.resume()}catch(_){}
+    if(Date.now()-lastTTSEnd>3000){
+      // Loa hoặc tai nghe (nhất là Bluetooth) vừa "ngủ" nên hay nuốt mất chữ đầu: phát trước một nhịp gần như im lặng
+      const w=new SpeechSynthesisUtterance('hi');w.lang='en-US';w.volume=0.01;w.rate=2;if(u.voice)w.voice=u.voice;
+      speechSynthesis.speak(w);
+    }
+    speechSynthesis.speak(u);
+  };
   if(wasBusy)setTimeout(go,80);else go();
 }
 const down=()=>{$('chat').scrollTop=$('chat').scrollHeight};
