@@ -157,6 +157,14 @@ body.hide .m.ai:not(.show) .txt{display:none}
 .asend{width:40px;height:40px;border-radius:50%;background:var(--p);color:#171614;display:grid;place-items:center;flex:none;transition:transform .3s var(--ease)}
 .asend svg{width:18px;height:18px}.asend:hover:not(:disabled){transform:scale(1.1)}.asend:disabled{opacity:.45}
 @media(max-width:520px){#asst{left:8px;right:8px;bottom:8px;width:auto;max-width:none;height:calc(100vh - 70px)}}
+
+/* Nói thay vì gõ */
+.mic{width:46px;flex:none;border-radius:10px;background:transparent;color:var(--text);border:1px solid var(--line);display:grid;place-items:center;transition:background .3s var(--ease),color .3s,border-color .3s}
+.mic svg{width:20px;height:20px;fill:currentColor}
+.mic:hover:not(:disabled){border-color:var(--p);color:var(--p)}
+.mic:disabled{opacity:.45}
+.mic.rec{background:var(--p);color:#171614;border-color:var(--p);animation:ring 1.4s infinite}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(255,90,54,.55)}100%{box-shadow:0 0 0 14px rgba(255,90,54,0)}}
 </style>
 </head>
 <body class="hide">
@@ -179,6 +187,7 @@ body.hide .m.ai:not(.show) .txt{display:none}
     <div class="toggles">
       <label class="sw"><input type="checkbox" id="hide" checked><i></i>Ẩn chữ (luyện nghe)</label>
       <label class="sw"><input type="checkbox" id="slow"><i></i>Đọc chậm</label>
+      <label class="sw"><input type="checkbox" id="auto" checked><i></i>Tự gửi khi nói xong</label>
     </div>
   </div>
   <button class="cta" id="start">Bắt đầu hội thoại</button>
@@ -187,10 +196,11 @@ body.hide .m.ai:not(.show) .txt{display:none}
 <div class="grid">
   <section class="card">
     <div class="ch"><span class="dot"></span><div><b id="ttl">Chưa bắt đầu</b><small id="sub">Chọn tình huống rồi bấm “Bắt đầu hội thoại”</small></div></div>
-    <div id="chat"><div class="hint">AI sẽ nói trước.<br>Bạn lắng nghe rồi gõ câu trả lời bằng tiếng Anh.<br><small>Mẹo: bôi đen một từ/cụm trong lời AI (bấm “Hiện chữ”) để xem nghĩa, phát âm và tự thêm vào Từ mới.</small></div></div>
+    <div id="chat"><div class="hint">AI sẽ nói trước.<br>Bạn lắng nghe rồi gõ hoặc bấm mic nói câu trả lời bằng tiếng Anh.<br><small>Mẹo: bôi đen một từ/cụm trong lời AI (bấm “Hiện chữ”) để xem nghĩa, phát âm và tự thêm vào Từ mới.</small></div></div>
     <div id="st"></div>
     <div class="bar">
-      <input type="text" id="msg" placeholder="Gõ câu trả lời bằng tiếng Anh…" disabled>
+      <input type="text" id="msg" placeholder="Gõ hoặc bấm mic để trả lời bằng tiếng Anh…" disabled>
+      <button class="mic" id="mic" disabled aria-label="Bấm để nói" title="Bấm để nói"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1A7 7 0 0 0 19 11h-2z"/></svg></button>
       <button class="send" id="send" disabled>Gửi</button>
     </div>
   </section>
@@ -398,7 +408,7 @@ function addAI(say,vocab){
   ac.append(b1,b2,b3);b.append(au,tx,ac);r.append(av,b);$('chat').appendChild(r);down();
   addFresh(vocab,say);speak(say,b);
 }
-function setBusy(b){busy=b;$('send').disabled=b||!active;$('msg').disabled=b||!active;$('start').disabled=b;if(!b)$('st').textContent=''}
+function setBusy(b){busy=b;$('send').disabled=b||!active;$('mic').disabled=b||!active;$('msg').disabled=b||!active;$('start').disabled=b;if(!b)$('st').textContent=''}
 
 const MAXT=8; // tối đa số lượt học viên trả lời
 function endConv(){
@@ -408,7 +418,7 @@ function endConv(){
   $('msg').placeholder='Hội thoại đã kết thúc';
   toast('Hội thoại đã kết thúc');
 }
-async function turn(userText){
+async function turn(userText,sp){
   setBusy(true);$('st').textContent='';
   const ctx=hist.map(x=>(x.r==='ai'?'Nhân vật: ':'Học viên: ')+x.t).join('\n')||'(chưa có)';
   const turns=hist.filter(x=>x.r==='me').length;
@@ -421,7 +431,7 @@ Mã ngẫu nhiên: ${cur.seed} (dùng để tạo câu mở đầu và chi tiế
 Số lượt học viên đã trả lời: ${turns}.
 Hội thoại trước đó:
 ${ctx}
-${userText?'Học viên vừa gõ: '+userText:'Hãy mở đầu hội thoại.'}
+${userText?'Học viên vừa trả lời: '+userText:'Hãy mở đầu hội thoại.'}
 Chỉ trả về JSON đúng dạng: {"say":"...","vocab":[{"w":"...","vi":"..."}]}
 - say: lời tiếng Anh nhân vật nói tiếp (1-3 câu ngắn, hợp trình độ, phản hồi tự nhiên theo điều học viên vừa gõ), nếu end=false thì kết thúc bằng một câu hỏi hoặc yêu cầu để học viên trả lời.
 - end: true khi hội thoại đã đến hồi kết tự nhiên (giao dịch/việc đã xong, hai bên chào tạm biệt) hoặc học viên đã trả lời từ ${MAXT} lượt trở lên; khi end=true thì say là lời chào kết thúc, KHÔNG hỏi thêm. Ngược lại end=false.
@@ -431,9 +441,9 @@ Chỉ trả về JSON đúng dạng: {"say":"...","vocab":[{"w":"...","vi":"..."
     ph=mk('div','note');ph.textContent='Đang chấm câu của bạn…';$('chat').appendChild(ph);
     const promptB=`Bạn là gia sư tiếng Anh cho học viên người Việt. Chủ đề: ${cur.topic}. Trình độ: ${level}.
 Nhân vật vừa nói: "${lastAI?lastAI.t:''}"
-Học viên gõ: "${userText}"
+${sp?"Học viên NÓI (máy nhận dạng giọng nói chuyển thành chữ"+(sp.conf!=null?", độ tin cậy "+sp.conf.toFixed(2)+"/1, càng thấp thì phát âm càng có thể chưa rõ":"")+"):":"Học viên gõ:"} "${userText}"
 Chỉ trả về JSON đúng dạng: {"feedback":"..."}
-- feedback: tiếng Việt, 1-3 câu: học viên nghe hiểu đúng ý chưa, sửa lỗi ngữ pháp hoặc chính tả, gợi ý cách viết tự nhiên hơn.`;
+- feedback: tiếng Việt, 1-3 câu: học viên nghe hiểu đúng ý chưa, sửa lỗi ngữ pháp hoặc chính tả, gợi ý cách viết tự nhiên hơn. Nếu là lời nói thì nhận xét thêm về độ rõ ràng khi phát âm và chỗ máy có thể đã nghe nhầm.`;
     pB=sample.json(promptB).catch(()=>null);
   }
   const ty=mk('div','m ai'),tb=mk('div','b'),dt=mk('div','dots');dt.append(mk('i'),mk('i'),mk('i'));
@@ -455,14 +465,15 @@ Chỉ trả về JSON đúng dạng: {"feedback":"..."}
 }
 $('start').onclick=()=>{
   if('speechSynthesis' in window)speechSynthesis.cancel();
-  newSession();hist=[];active=true;$('chat').innerHTML='';$('msg').placeholder='Gõ câu trả lời bằng tiếng Anh…';
+  newSession();hist=[];active=true;$('chat').innerHTML='';$('msg').placeholder='Gõ hoặc bấm mic để trả lời bằng tiếng Anh…';
   $('start').textContent='Hội thoại mới';turn(null);
 };
-function send(){
+function send(viaSpeech){
   const v=$('msg').value.trim();if(!v||busy)return;
-  $('msg').value='';addMe(v);hist.push({r:'me',t:v});turn(v);
+  const sp=viaSpeech===true?{conf:recConf}:null;
+  $('msg').value='';addMe(v);hist.push({r:'me',t:v});turn(v,sp);
 }
-$('send').onclick=send;$('msg').onkeydown=e=>{if(e.key==='Enter')send()};
+$('send').onclick=()=>send();$('msg').onkeydown=e=>{if(e.key==='Enter')send()};
 $('hide').onchange=e=>document.body.classList.toggle('hide',e.target.checked);
 
 /* ---------- Quét chữ để tra nghĩa + phát âm + thêm vào Từ mới ---------- */
@@ -532,6 +543,39 @@ document.addEventListener('mousedown',e=>{if(!lk.contains(e.target)&&lk.classLis
 document.addEventListener('keydown',e=>{if(e.key==='Escape')lkHide()});
 $('chat').addEventListener('scroll',lkHide);
 lk.addEventListener('mousedown',e=>e.preventDefault());
+
+/* ---------- Nói thay vì gõ (nhận dạng giọng nói của trình duyệt) ---------- */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const PH='Gõ hoặc bấm mic để trả lời bằng tiếng Anh…';
+let rec=null,recOn=false,recFinal='',recConf=null,recErr='';
+$('mic').onclick=()=>{
+  if(!SR){toast('Trình duyệt này chưa hỗ trợ nhận giọng nói. Bạn dùng Chrome, Edge hoặc Safari nhé.');return}
+  if(recOn){rec.stop();return}
+  if('speechSynthesis' in window)speechSynthesis.cancel();
+  document.querySelectorAll('.speaking').forEach(e=>e.classList.remove('speaking'));
+  rec=new SR();rec.lang='en-US';rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=1;
+  recFinal='';recConf=null;recErr='';
+  rec.onstart=()=>{recOn=true;$('mic').classList.add('rec');$('msg').value='';$('msg').placeholder='Đang nghe, bạn nói đi…'};
+  rec.onresult=e=>{
+    let itm='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const r=e.results[i];
+      if(r.isFinal){recFinal+=r[0].transcript;recConf=r[0].confidence}else itm+=r[0].transcript;
+    }
+    $('msg').value=(recFinal+itm).trim();
+  };
+  rec.onerror=e=>{recErr=e.error||''};
+  rec.onend=()=>{
+    recOn=false;$('mic').classList.remove('rec');$('msg').placeholder=PH;
+    const v=$('msg').value.trim();
+    if(recErr==='not-allowed'||recErr==='service-not-allowed')toast('Bạn hãy cho phép trình duyệt dùng micro rồi thử lại nhé.');
+    else if(recErr==='network')toast('Nhận giọng nói cần có mạng, bạn kiểm tra lại giúp mình nhé.');
+    else if(!v)toast('Mình chưa nghe thấy gì, bạn bấm mic và nói lại nhé.');
+    else if($('auto').checked)send(true);
+    else $('msg').focus();
+  };
+  try{rec.start()}catch(_){}
+};
 
 /* ---------- Trợ lý nổi: hỏi chỗ nghe không ra ---------- */
 const ah=[];let aBusy=false,aCtx='';
