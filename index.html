@@ -182,6 +182,18 @@ body.hide .m.ai:not(.show) .txt{display:none}
 #aexp svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #asst.big{width:min(680px,calc(100vw - 36px));height:calc(100vh - 36px)}
 @media(max-width:520px){#aexp{display:none}}
+
+/* Chế độ chép chính tả */
+.grid>.card:first-child{--ok:#7fcf9c}
+.dh{align-self:stretch;max-width:100%}
+.dhh{font-size:13.5px;color:var(--muted);margin-bottom:8px}
+.dw{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:17px}
+.dw .k{color:var(--ok)}
+.dw .h{color:var(--p);font-weight:600;border-bottom:1px dashed var(--p)}
+.endbox .txt{display:block!important;margin-top:8px;font-size:18px;font-weight:600}
+.endbox .dvi{font-size:14px;font-weight:400;color:var(--muted);margin-top:2px}
+.dnext{align-self:flex-start;padding:10px 22px;border-radius:10px;background:var(--p);color:#171614;font-weight:600;transition:transform .3s var(--ease)}
+.dnext:hover{transform:translateY(-2px)}
 </style>
 </head>
 <body class="hide">
@@ -194,6 +206,12 @@ body.hide .m.ai:not(.show) .txt{display:none}
   <div class="lbl">Chọn tình huống</div>
   <div class="chips" id="chips"></div>
   <div class="setrow">
+    <div><div class="lbl">Chế độ</div>
+      <div class="segs" id="modes">
+        <button class="seg on" data-m="talk">Hội thoại</button>
+        <button class="seg" data-m="dict">Chép chính tả</button>
+      </div>
+    </div>
     <div><div class="lbl">Trình độ</div>
       <div class="segs" id="segs">
         <button class="seg" data-l="Mới bắt đầu (A1-A2)">Mới bắt đầu</button>
@@ -306,7 +324,7 @@ function buildChips(){
   });
 }
 buildChips();
-$('segs').onclick=e=>{const b=e.target.closest('.seg');if(!b)return;level=b.dataset.l;document.querySelectorAll('.seg').forEach(s=>s.classList.toggle('on',s===b))};
+$('segs').onclick=e=>{const b=e.target.closest('.seg');if(!b)return;level=b.dataset.l;$('segs').querySelectorAll('.seg').forEach(s=>s.classList.toggle('on',s===b))};
 
 function newSession(){
   const t=choice==='random'?pick(TOPICS):TOPICS.find(x=>x.k===choice);
@@ -325,8 +343,8 @@ const same=(a,b)=>a.trim().toLowerCase()===b.trim().toLowerCase();
 const isSaved=w=>saved.some(x=>same(x.w,w));
 let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3200)}
 
-function addFresh(list,say){
-  const lock=document.body.classList.contains('hide');
+function addFresh(list,say,nolock){
+  const lock=!nolock&&document.body.classList.contains('hide');
   (list||[]).forEach(x=>{
     if(!x||!x.w||!x.vi||fresh.some(f=>same(f.w,x.w)))return;
     fresh.unshift({w:x.w,vi:x.vi,ctx:say,topic:cur?cur.topic:'',lock,isNew:true});
@@ -514,15 +532,132 @@ Chỉ trả về JSON đúng dạng: {"feedback":"..."}
     down();
   });
 }
+/* ---------- Chế độ chép chính tả: nghe, gõ lại, tối đa 10 lần ---------- */
+let mode='talk',sess='talk',started=false;
+const MAXTRY=10,KINDS=['một câu hỏi','một lời đề nghị lịch sự','một thông báo ngắn','một lời giải thích','một lời gợi ý','một câu trả lời cho yêu cầu của khách','một lời xin lỗi nhẹ vì sự bất tiện','một lời nhắc'];
+let dict={say:'',vi:'',vocab:[],disp:[],norm:[],known:[],tries:0,done:true,used:[],n:0,ok:0,lab:null};
+const HINT_TALK=$('chat').querySelector('.hint')?$('chat').querySelector('.hint').innerHTML:'';
+const HINT_DICT='AI sẽ đọc một câu tiếng Anh.<br>Bạn nghe rồi gõ lại đúng từng chữ. Mỗi lần sai, mình hiện chữ cái đầu của những từ chưa đúng. Sau 10 lần (hoặc khi gõ đúng) mới thấy đáp án.';
+function words(t){
+  // tách thành từ, bỏ dấu câu và hoa/thường để so sánh
+  const disp=[],norm=[];
+  String(t).replace(/[’‘]/g,"'").replace(/[-–—]/g,' ').split(/\s+/).filter(Boolean).forEach(w=>{
+    const n=w.toLowerCase().replace(/[^a-z0-9']/g,'').replace(/^'+|'+$/g,'');
+    if(n){disp.push(w);norm.push(n)}
+  });
+  return {disp,norm};
+}
+function lcsHit(t,g){
+  const n=t.length,m=g.length,d=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++)d[i][j]=t[i-1]===g[j-1]?d[i-1][j-1]+1:Math.max(d[i-1][j],d[i][j-1]);
+  const hit=[];let i=n,j=m;
+  while(i>0&&j>0){if(t[i-1]===g[j-1]){hit.push(i-1);i--;j--}else if(d[i-1][j]>=d[i][j-1])i--;else j--}
+  return hit;
+}
+const lockInput=b=>{$('msg').disabled=$('send').disabled=$('mic').disabled=b};
+function setMode(m){
+  mode=m;$('modes').querySelectorAll('.seg').forEach(s=>s.classList.toggle('on',s.dataset.m===m));
+  $('start').textContent=started?(m==='dict'?'Chép chính tả mới':'Hội thoại mới'):(m==='dict'?'Bắt đầu chép chính tả':'Bắt đầu hội thoại');
+  const h=$('chat').querySelector('.hint');if(h)h.innerHTML=m==='dict'?HINT_DICT:HINT_TALK;
+  if(!started)$('sub').textContent=m==='dict'?'Chọn tình huống rồi bấm “Bắt đầu chép chính tả”':'Chọn tình huống rồi bấm “Bắt đầu hội thoại”';
+}
+$('modes').onclick=e=>{const b=e.target.closest('.seg');if(b)setMode(b.dataset.m)};
+function dictNextBtn(label){
+  document.querySelectorAll('.dnext').forEach(e=>e.remove());
+  const b=mk('button','dnext');b.textContent=label;b.onclick=nextDict;$('chat').appendChild(b);down();
+}
+function addDict(say){
+  clearHint();
+  const r=mk('div','m ai'),av=mk('div','av');av.textContent='AI';
+  const b=mk('div','b'),au=mk('div','au');
+  const pl=mk('button','play');pl.textContent='▶';pl.onclick=()=>speak(say,b);
+  const bars=mk('div','bars');for(let i=0;i<7;i++)bars.appendChild(mk('i'));
+  const lab=mk('span','lab');lab.textContent='Câu '+dict.n+' · Lần 0/'+MAXTRY+' · nghe rồi gõ lại';
+  au.append(pl,bars,lab);
+  const ac=mk('div','acts'),b1=mk('button');b1.textContent='Nghe chậm';b1.onclick=()=>speak(say,b,true);
+  ac.append(b1);b.append(au,ac);r.append(av,b);$('chat').appendChild(r);down();
+  dict.lab=lab;speak(say,b,false,true);
+}
+async function nextDict(){
+  document.querySelectorAll('.dnext').forEach(e=>e.remove());
+  setBusy(true);
+  const seed=Math.random().toString(36).slice(2,8);cur.seed=seed;
+  const used=dict.used.slice(-6).map(x=>'- '+x).join('\n')||'(chưa có)';
+  const prompt=`Bạn tạo câu tiếng Anh cho học viên người Việt luyện NGHE CHÉP CHÍNH TẢ.
+Chủ đề: ${cur.topic}. Bối cảnh: ${cur.setting}. Trình độ: ${level}.
+Kiểu câu lần này: ${pick(KINDS)}.
+Các câu đã dùng, không lặp lại hoặc chỉ đổi vài chữ:
+${used}
+Mã ngẫu nhiên: ${seed} (chỉ để đa dạng hóa, tuyệt đối không viết mã này vào câu).
+Chỉ trả về JSON đúng dạng: {"say":"...","vi":"...","vocab":[{"w":"...","vi":"..."}]}
+- say: MỘT câu tiếng Anh tự nhiên, đúng như người bản xứ nói trong bối cảnh này. Độ dài theo trình độ: mới bắt đầu 6-9 từ, trung cấp 9-14 từ, khá 12-18 từ. Chỉ dùng chữ cái, dấu nháy đơn và dấu câu thông thường; viết số bằng chữ (ví dụ "twenty"), không dùng ký hiệu như $ hay %.
+- vi: nghĩa tiếng Việt của câu.
+- vocab: tối đa 2 từ hoặc cụm đáng học trong say (w tiếng Anh, vi nghĩa tiếng Việt).`;
+  try{
+    const r=await sample.json(prompt);
+    const say=cleanSay(r&&r.say).trim(),w=words(say);
+    if(!w.norm.length)throw new Error('câu trống');
+    dict.n++;dict.say=say;dict.vi=String(r.vi||'');dict.vocab=r.vocab||[];dict.disp=w.disp;dict.norm=w.norm;
+    dict.known=w.norm.map(()=>false);dict.tries=0;dict.done=false;dict.used.push(say);
+    addDict(say);setBusy(false);$('msg').focus();
+  }catch(e){
+    setBusy(false);lockInput(true);
+    const m=(e&&e.message)||'';
+    $('st').textContent=/^(429|5\d\d)/.test(m)?'Máy chủ AI đang bận hoặc không phản hồi (mã '+m.slice(0,3)+'). Bạn bấm “Thử lại” nhé.':'Có lỗi: '+m;
+    dictNextBtn('Thử lại');
+  }
+}
+function dictStart(){
+  started=true;
+  dict={say:'',vi:'',vocab:[],disp:[],norm:[],known:[],tries:0,done:true,used:[],n:0,ok:0,lab:null};
+  $('msg').placeholder='Gõ lại những gì bạn nghe được…';
+  $('start').textContent='Chép chính tả mới';
+  nextDict();
+}
+function hintLine(){
+  const box=mk('div','dw');
+  dict.disp.forEach((w,i)=>{
+    const s=mk('span',dict.known[i]?'k':'h');
+    s.textContent=dict.known[i]?w:(w.replace(/[^A-Za-z0-9']/g,'').charAt(0)||w.charAt(0))+'…';
+    box.appendChild(s);
+  });
+  return box;
+}
+function dictGuess(v){
+  addMe(v);dict.tries++;
+  const g=words(v).norm,ok=g.join(' ')===dict.norm.join(' ');
+  lcsHit(dict.norm,g).forEach(i=>{dict.known[i]=true});
+  if(dict.lab)dict.lab.textContent='Câu '+dict.n+' · Lần '+dict.tries+'/'+MAXTRY;
+  if(ok||dict.tries>=MAXTRY){dictFinish(ok);return}
+  const nt=mk('div','note dh'),h=mk('div','dhh');
+  h.textContent='Lần '+dict.tries+'/'+MAXTRY+': chưa đúng, còn '+(MAXTRY-dict.tries)+' lần. Chữ cái đầu của những từ chưa đúng:';
+  nt.append(h,hintLine());$('chat').appendChild(nt);down();
+}
+function dictFinish(ok){
+  dict.done=true;lockInput(true);
+  if(ok)dict.ok++;
+  if(dict.lab)dict.lab.textContent='Câu '+dict.n+(ok?' · Đúng sau '+dict.tries+' lần':' · Hết '+MAXTRY+' lần');
+  const b=mk('div','endbox');
+  b.textContent=ok?'Chính xác! Bạn chép đúng sau '+dict.tries+' lần.':'Hết '+MAXTRY+' lần rồi, đây là đáp án:';
+  const tx=mk('div','txt');tx.textContent=dict.say;
+  const vi=mk('div','dvi');vi.textContent=dict.vi;
+  b.append(tx,vi);$('chat').appendChild(b);
+  hist.push({r:'ai',t:dict.say});
+  addFresh(dict.vocab,dict.say,true);
+  $('sub').textContent='Bối cảnh: '+cur.setting+' · Đúng '+dict.ok+'/'+dict.n+' câu';
+  dictNextBtn('Câu tiếp theo');
+}
+
 $('start').onclick=()=>{
   if('speechSynthesis' in window)speechSynthesis.cancel();
   unlockTTS();
-  newSession();hist=[];active=true;$('chat').innerHTML='';$('msg').placeholder='Gõ hoặc bấm mic để trả lời bằng tiếng Anh…';
+  newSession();hist=[];active=true;$('chat').innerHTML='';sess=mode;started=true;if(mode==='dict'){dictStart();return}$('msg').placeholder='Gõ hoặc bấm mic để trả lời bằng tiếng Anh…';
   $('start').textContent='Hội thoại mới';turn(null);
 };
 function send(viaSpeech){
   unlockTTS();
   const v=$('msg').value.trim();if(!v||busy)return;
+  if(sess==='dict'){if(dict.done)return;$('msg').value='';dictGuess(v);return}
   const sp=viaSpeech===true?{conf:recConf}:null;
   $('msg').value='';addMe(v);hist.push({r:'me',t:v});turn(v,sp);
 }
